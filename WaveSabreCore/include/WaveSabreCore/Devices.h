@@ -15,5 +15,6 @@
 #include "Chamber.h"
 #include "Twister.h"
 #include "Cathedral.h"
+#include "Vocoder.h"
 
 #endif
