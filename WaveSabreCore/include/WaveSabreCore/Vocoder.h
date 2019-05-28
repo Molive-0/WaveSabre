@@ -3,6 +3,9 @@
 
 #include "Device.h"
 #include "BiquadFilter.h"
+#include "kissfft.hh"
+
+// "Dammit, Jim! I code C#, not C++!"
 
 namespace WaveSabreCore
 {
@@ -11,23 +14,7 @@ namespace WaveSabreCore
 	public:
 		enum class ParamIndices
 		{
-			LowCutFreq,
-			LowCutQ,
-
-			Peak1Freq,
-			Peak1Gain,
-			Peak1Q,
-
-			Peak2Freq,
-			Peak2Gain,
-			Peak2Q,
-
-			Peak3Freq,
-			Peak3Gain,
-			Peak3Q,
-
-			HighCutFreq,
-			HighCutQ,
+			Sidechain,
 
 			Master,
 
@@ -42,18 +29,14 @@ namespace WaveSabreCore
 		virtual float GetParam(int index) const;
 
 	private:
-		float lowCutFreq, lowCutQ;
-		float peak1Freq, peak1Gain, peak1Q;
-		float peak2Freq, peak2Gain, peak2Q;
-		float peak3Freq, peak3Gain, peak3Q;
-		float highCutFreq, highCutQ;
+		bool sidechain;
 		float master;
-
-		BiquadFilter highpass[2];
-		BiquadFilter peak1[2];
-		BiquadFilter peak2[2];
-		BiquadFilter peak3[2];
-		BiquadFilter lowpass[2];
+		int nfft;
+		typedef std::complex<float> cpx;
+		std::vector<float> inbuf;
+		std::vector<cpx> outbuf;
+		kissfft<float> fft;
+		BiquadFilter vocoderfilters[2][12];
 	};
 }
 

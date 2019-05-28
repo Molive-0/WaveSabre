@@ -14,6 +14,7 @@ add_library(WaveSabreCore
 	include/WaveSabreCore/Falcon.h
 	include/WaveSabreCore/GmDls.h
 	include/WaveSabreCore/Helpers.h
+	include/WaveSabreCore/kissfft.hh
 	include/WaveSabreCore/Leveller.h
 	include/WaveSabreCore/MxcsrFlagGuard.h
 	include/WaveSabreCore/ResampleBuffer.h
@@ -26,6 +27,7 @@ add_library(WaveSabreCore
 	include/WaveSabreCore/SynthDevice.h
 	include/WaveSabreCore/Thunder.h
 	include/WaveSabreCore/Twister.h
+	include/WaveSabreCore/Vocoder.h
 	src/Adultery.cpp
 	src/AllPass.cpp
 	src/AllPassDelay.cpp
@@ -52,7 +54,8 @@ add_library(WaveSabreCore
 	src/StateVariableFilter.cpp
 	src/SynthDevice.cpp
 	src/Thunder.cpp
-	src/Twister.cpp)
+	src/Twister.cpp
+	src/Vocoder.cpp)
 
 target_link_libraries(WaveSabreCore Msacm32.lib)
 target_include_directories(WaveSabreCore PUBLIC include)

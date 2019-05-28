@@ -14,6 +14,7 @@
 #include "WaveSabreCore/ResampleBuffer.h"
 #include "WaveSabreCore/GmDls.h"
 #include "WaveSabreCore/MxcsrFlagGuard.h"
+#include "WaveSabreCore/kissfft.hh"
 
 #include "WaveSabreCore/Devices.h"
 
