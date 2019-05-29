@@ -3,7 +3,7 @@
 
 #include "Device.h"
 #include "BiquadFilter.h"
-#include "kissfft.hh"
+//#include "kissfft.hh"
 
 // "Dammit, Jim! I code C#, not C++!"
 
@@ -14,9 +14,16 @@ namespace WaveSabreCore
 	public:
 		enum class ParamIndices
 		{
-			Sidechain,
-
 			Master,
+			Affect,
+			Q1,
+			Q2,
+			Exponent,
+			Power,
+			Gain1,
+			Gain2,
+			Freq2,
+			Divide,
 
 			NumParams,
 		};
@@ -29,14 +36,17 @@ namespace WaveSabreCore
 		virtual float GetParam(int index) const;
 
 	private:
-		bool sidechain;
 		float master;
-		int nfft;
-		typedef std::complex<float> cpx;
-		std::vector<float> inbuf;
-		std::vector<cpx> outbuf;
-		kissfft<float> fft;
-		BiquadFilter vocoderfilters[2][12];
+		float affect;
+		float q1;
+		float q2;
+		float exponent;
+		float power;
+		float gain1;
+		float gain2;
+		float freq2;
+		float divide;
+		BiquadFilter vocoderfilters[3][16];
 	};
 }
 

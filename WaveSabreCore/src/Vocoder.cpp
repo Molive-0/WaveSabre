@@ -1,6 +1,6 @@
 #include <WaveSabreCore/Vocoder.h>
 #include <WaveSabreCore/Helpers.h>
-#include <WaveSabreCore/kissfft.hh>
+//#include <WaveSabreCore/kissfft.hh>
 
 #include <math.h>
 
@@ -9,57 +9,96 @@
 namespace WaveSabreCore
 {
 	Vocoder::Vocoder()
-		: Device((int)ParamIndices::NumParams),
-		fft (nfft,false)
+		: Device((int)ParamIndices::NumParams)
 	{
-		typedef std::complex<float> cpx;
-
-		sidechain = false;
-
-		std::vector<float> inbuf(nfft);
-		std::vector<cpx> outbuf(nfft);
+		master = 1.0f;
+		affect = 1.0f;
+		q1 = 0.3f;
+		q2 = 0.2f;
+		exponent = 1.7f;
+		power = 2.0f;
+		gain1 = 60.0f;
+		gain2 = 10.0f;
+		freq2 = 1000.0f;
+		divide = 100.0f;
 
 		for (int i = 0; i < 2; i++)
 		{
-			for (int j = 0; j < 12; j++)
+			for (int j = 0; j < 16; j++)
 			{
 				vocoderfilters[i][j].SetType(BiquadFilterType::Peak);
-				vocoderfilters[i][j].SetQ(0.2f);
-				vocoderfilters[i][j].SetFreq((float)(pow(2.4,j)));
-				inbuf[j] = 0.0f;
+				vocoderfilters[i][j].SetQ(q1);
+				vocoderfilters[i][j].SetFreq((float)(pow(exponent,j+power)));
+				//vocoderfilters[i][j].SetFreq(j*1000.0f);
+				vocoderfilters[i][j].SetGain(gain1);
 			}
 		}
-
-		nfft = 12;
-		kissfft<float> fft(nfft,false);
+		for (int j = 0; j < 16; j++)
+		{
+			vocoderfilters[2][j].SetType(BiquadFilterType::Lowpass);
+			vocoderfilters[2][j].SetQ(q2);
+			vocoderfilters[2][j].SetFreq(freq2);
+			vocoderfilters[2][j].SetGain(gain2);
+		}
 
 		master = 1.0f;
+		affect = 1.0f;
+
 	}
 
 	void Vocoder::Run(double songPosition, float **inputs, float **outputs, int numSamples)
 	{	
+		for (int i = 0; i < 2; i++)
+		{
+			for (int j = 0; j < 16; j++)
+			{
+				vocoderfilters[i][j].SetQ(q1);
+				vocoderfilters[i][j].SetFreq((float)(pow(exponent, j + power)));
+				vocoderfilters[i][j].SetGain(gain1);
+			}
+		}
+		for (int j = 0; j < 16; j++)
+		{
+			vocoderfilters[2][j].SetQ(q2);
+			vocoderfilters[2][j].SetFreq(freq2);
+			vocoderfilters[2][j].SetGain(gain2);
+		}
 			for (int j = 0; j < numSamples; j++)
 			{			
-				for (int shuf = 0; shuf<nfft-1; shuf++)
+				float modulationsample = inputs[1][j];
+				float bandpasses[16];
+
+				//Get bandpasses on the carrier sample
+				for (int i = 0; i < 16; i++)
 				{
-					inbuf[shuf] = inbuf[shuf+1];
-				}
-				inbuf[nfft-1] = inputs[0][j];
-
-				fft.transform_real( &inbuf[0] , &outbuf[0] );
-
-				for (int i = 0; i<nfft; i++) {
-					vocoderfilters[0][i].SetGain(1.0-outbuf[i].imag());					
+					bandpasses[i] = vocoderfilters[0][i].Next(modulationsample)/60.0f;
 				}
 
-				float sample = inputs[1][j];
+				float carriersample = inputs[0][j];
+				float outputpasses[16];
 
-				for (int i = 0; i<nfft; i++) {
-					sample = vocoderfilters[0][i].Next(sample);				
+				//Get bandpasses on the modular sample
+				for (int i = 0; i< 16; i++) 
+				{
+					outputpasses[i] = vocoderfilters[1][i].Next(carriersample)/60.0f;
 				}
 
-				outputs[0][j] = sample * master;
-				outputs[1][j] = sample * master;
+				//Use the bandpasses to affect the gain of the modular sample
+				for (int i = 0; i< 16; i++) 
+				{
+					float gain = Helpers::Clamp(vocoderfilters[2][i].Next(fabsf(bandpasses[i]))/divide, -1.0f, 1.0f);
+					outputpasses[i] *= Helpers::Clamp(gain*affect, -1.0f, 1.0f);
+				}
+
+				//mix all passes down
+				float outsample = 0;
+				for (int i = 0; i < 16; i++)
+				{
+					outsample += outputpasses[i] / 16.0f;
+				}
+
+				outputs[0][j] = Helpers::Clamp(outsample * master,-1.0f,1.0f);
+				outputs[1][j] = outputs[0][j];
 			}
 	}
 
@@ -67,8 +106,16 @@ namespace WaveSabreCore
 	{
 		switch ((ParamIndices)index)
 		{
-		case ParamIndices::Sidechain: sidechain = Helpers::ParamToBoolean(value); break;
 		case ParamIndices::Master: master = value; break;
+		case ParamIndices::Affect: affect = value; break;
+		case ParamIndices::Exponent: exponent = value*3.0f; break;
+		case ParamIndices::Power: power = value*10.0f; break;
+		case ParamIndices::Divide: divide = value*3000.0f; break;
+		case ParamIndices::Q1: q1 = Helpers::ParamToQ(value); break;
+		case ParamIndices::Q2: q2 = Helpers::ParamToQ(value); break;
+		case ParamIndices::Freq2: freq2 = Helpers::ParamToFrequency(value); break;
+		case ParamIndices::Gain1: gain1 = Helpers::ParamToDb(value*10.0f); break;
+		case ParamIndices::Gain2: gain2 = Helpers::ParamToDb(value); break;
 		}
 	}
 
@@ -76,11 +123,19 @@ namespace WaveSabreCore
 	{
 		switch ((ParamIndices)index)
 		{
-		case ParamIndices::Sidechain:
+		case ParamIndices::Master:
 		default:
-			return Helpers::BooleanToParam(sidechain);
+			return master;
 
-		case ParamIndices::Master: return master;
+		case ParamIndices::Affect: return affect;
+		case ParamIndices::Exponent: return exponent/3.0f;
+		case ParamIndices::Power: return power/10.0f;
+		case ParamIndices::Divide: return divide/3000.0f;
+		case ParamIndices::Q1: return Helpers::QToParam(q1);
+		case ParamIndices::Q2: return Helpers::QToParam(q2);
+		case ParamIndices::Freq2: return Helpers::FrequencyToParam(freq2);
+		case ParamIndices::Gain1: return Helpers::DbToParam(gain1)/10.0f;
+		case ParamIndices::Gain2: return Helpers::DbToParam(gain2);
 		}
 	}
 }
